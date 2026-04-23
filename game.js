@@ -2,9 +2,9 @@
 const GAME_CONFIG = {
     CANVAS_WIDTH: 400,
     CANVAS_HEIGHT: 600,
-    GRAVITY: 0.5,
-    FRICTION: 0.99,
-    BOUNCE: 0.6,
+    GRAVITY: 0.35,
+    FRICTION: 0.98,
+    BOUNCE: 0.3,
     INITIAL_TIME: 60,
     INITIAL_LIVES: 3,
     MERGE_SCORE_BASE: 10,
@@ -15,6 +15,8 @@ const GAME_CONFIG = {
     POWER_UP_SPAWN_CHANCE: 0.1,
     SLOW_DOWN_DURATION: 5000,
     SHIELD_DURATION: 10000,
+    SPAWN_DELAY: 800,
+    DROP_AREA_HEIGHT: 120,
 };
 
 // 水果类型定义
@@ -51,8 +53,8 @@ class GameState {
         this.isPlaying = false;
         this.isPaused = false;
         this.gameOver = false;
+        this.canSpawn = true;
         
-        // 道具状态
         this.powerUps = {
             slowDown: 0,
             shield: 0,
@@ -92,17 +94,20 @@ class Fruit {
         this.vx = 0;
         this.vy = 0;
         this.radius = type.radius;
-        this.isDragging = false;
         this.isDropped = false;
         this.game = game;
         this.rotation = 0;
         this.rotationSpeed = (Math.random() - 0.5) * 0.1;
         this.scale = 1;
         this.opacity = 1;
+        this.id = Math.random().toString(36).substr(2, 9);
     }
 
     update(activePowerUps) {
-        if (this.isDragging) return;
+        if (!this.isDropped) {
+            this.rotation += this.rotationSpeed * 0.5;
+            return;
+        }
 
         const gravity = activePowerUps.slowDown ? GAME_CONFIG.GRAVITY * 0.3 : GAME_CONFIG.GRAVITY;
         this.vy += gravity;
@@ -123,16 +128,16 @@ class Fruit {
         
         if (this.x - this.radius < 0) {
             this.x = this.radius;
-            this.vx = -this.vx * GAME_CONFIG.BOUNCE;
+            this.vx = Math.abs(this.vx) * GAME_CONFIG.BOUNCE;
         }
         if (this.x + this.radius > canvas.width) {
             this.x = canvas.width - this.radius;
-            this.vx = -this.vx * GAME_CONFIG.BOUNCE;
+            this.vx = -Math.abs(this.vx) * GAME_CONFIG.BOUNCE;
         }
         if (this.y + this.radius > canvas.height) {
             this.y = canvas.height - this.radius;
-            this.vy = -this.vy * GAME_CONFIG.BOUNCE;
-            if (Math.abs(this.vy) < 1) {
+            this.vy = -Math.abs(this.vy) * GAME_CONFIG.BOUNCE;
+            if (Math.abs(this.vy) < 0.5) {
                 this.vy = 0;
             }
         }
@@ -150,16 +155,28 @@ class Fruit {
         const dy = other.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance === 0) return;
+        if (distance === 0) {
+            const angle = Math.random() * Math.PI * 2;
+            const moveDistance = 1;
+            this.x -= Math.cos(angle) * moveDistance;
+            this.y -= Math.sin(angle) * moveDistance;
+            other.x += Math.cos(angle) * moveDistance;
+            other.y += Math.sin(angle) * moveDistance;
+            return;
+        }
         
         const overlap = (this.radius + other.radius) - distance;
         const nx = dx / distance;
         const ny = dy / distance;
         
-        this.x -= nx * overlap * 0.5;
-        this.y -= ny * overlap * 0.5;
-        other.x += nx * overlap * 0.5;
-        other.y += ny * overlap * 0.5;
+        const totalMass = this.radius + other.radius;
+        const ratio1 = other.radius / totalMass;
+        const ratio2 = this.radius / totalMass;
+        
+        this.x -= nx * overlap * ratio1;
+        this.y -= ny * overlap * ratio1;
+        other.x += nx * overlap * ratio2;
+        other.y += ny * overlap * ratio2;
         
         const dvx = other.vx - this.vx;
         const dvy = other.vy - this.vy;
@@ -352,9 +369,15 @@ class Game {
         this.gameLoop = null;
         this.timerInterval = null;
         
+        this.isDragging = false;
         this.dragStartX = 0;
         this.dragStartY = 0;
-        this.isDragging = false;
+        this.dragOffsetX = 0;
+        this.dragOffsetY = 0;
+        this.fruitStartX = 0;
+        this.fruitStartY = 0;
+        this.fruitOriginalX = 0;
+        this.fruitOriginalY = 0;
         
         this.init();
     }
@@ -388,8 +411,6 @@ class Game {
                 this.canvas.style.width = 'auto';
                 this.canvas.style.height = '100%';
             }
-            
-            this.canvasOffset = this.canvas.getBoundingClientRect();
         };
         
         resizeCanvas();
@@ -411,13 +432,13 @@ class Game {
         document.getElementById('clearItem').addEventListener('click', () => this.usePowerUp('clear'));
         
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-        this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         
         this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
         this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
         this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
     }
 
     getCanvasCoordinates(e) {
@@ -425,31 +446,56 @@ class Game {
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
         
-        const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-        const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        }
         
         return {
             x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
+            y: (clientY - rect.top) * scaleY,
+            rawX: clientX - rect.left,
+            rawY: clientY - rect.top
         };
     }
 
     handleMouseDown(e) {
         if (!this.state.isPlaying || this.state.isPaused || this.state.gameOver) return;
+        if (!this.currentFruit || this.currentFruit.isDropped) return;
+        if (!this.state.canSpawn) return;
         
         const coords = this.getCanvasCoordinates(e);
         
-        if (this.currentFruit && !this.currentFruit.isDropped) {
-            const dx = coords.x - this.currentFruit.x;
-            const dy = coords.y - this.currentFruit.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        const dx = coords.x - this.currentFruit.x;
+        const dy = coords.y - this.currentFruit.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        const clickThreshold = this.currentFruit.radius + 60;
+        
+        if (distance < clickThreshold) {
+            this.isDragging = true;
+            this.dragOffsetX = dx;
+            this.dragOffsetY = dy;
+            this.dragStartX = coords.x;
+            this.dragStartY = coords.y;
+            this.fruitOriginalX = this.currentFruit.x;
+            this.fruitOriginalY = this.currentFruit.y;
+        } else if (coords.y < GAME_CONFIG.DROP_AREA_HEIGHT + 100) {
+            this.isDragging = true;
+            this.dragOffsetX = 0;
+            this.dragOffsetY = 0;
+            this.dragStartX = coords.x;
+            this.dragStartY = coords.y;
+            this.fruitOriginalX = this.currentFruit.x;
+            this.fruitOriginalY = this.currentFruit.y;
             
-            if (distance < this.currentFruit.radius + 20) {
-                this.isDragging = true;
-                this.currentFruit.isDragging = true;
-                this.dragStartX = coords.x - this.currentFruit.x;
-                this.dragStartY = coords.y - this.currentFruit.y;
-            }
+            this.updateFruitPosition(coords);
         }
     }
 
@@ -459,23 +505,30 @@ class Game {
         e.preventDefault();
         const coords = this.getCanvasCoordinates(e);
         
-        const newX = coords.x - this.dragStartX;
+        this.updateFruitPosition(coords);
+    }
+
+    updateFruitPosition(coords) {
+        if (!this.currentFruit) return;
+        
+        let targetX = coords.x - this.dragOffsetX;
+        let targetY = coords.y - this.dragOffsetY;
+        
         const minX = this.currentFruit.radius;
         const maxX = this.canvas.width - this.currentFruit.radius;
         
-        this.currentFruit.x = Math.max(minX, Math.min(maxX, newX));
+        const minY = this.currentFruit.radius;
+        const maxY = GAME_CONFIG.DROP_AREA_HEIGHT + this.currentFruit.radius;
+        
+        this.currentFruit.x = Math.max(minX, Math.min(maxX, targetX));
+        this.currentFruit.y = Math.max(minY, Math.min(maxY, targetY));
     }
 
     handleMouseUp(e) {
         if (!this.isDragging || !this.currentFruit) return;
         
         this.isDragging = false;
-        this.currentFruit.isDragging = false;
-        this.currentFruit.isDropped = true;
-        
-        setTimeout(() => {
-            this.spawnNewFruit();
-        }, 500);
+        this.dropCurrentFruit();
     }
 
     handleTouchStart(e) {
@@ -493,6 +546,19 @@ class Game {
         this.handleMouseUp(e);
     }
 
+    dropCurrentFruit() {
+        if (!this.currentFruit || this.currentFruit.isDropped) return;
+        
+        this.currentFruit.isDropped = true;
+        this.state.canSpawn = false;
+        
+        setTimeout(() => {
+            if (this.state.isPlaying && !this.state.gameOver && !this.state.isPaused) {
+                this.spawnNewFruit();
+            }
+        }, GAME_CONFIG.SPAWN_DELAY);
+    }
+
     startGame() {
         this.state.reset();
         this.fruits = [];
@@ -502,6 +568,8 @@ class Game {
         this.state.isPlaying = true;
         this.state.isPaused = false;
         this.state.gameOver = false;
+        this.state.canSpawn = true;
+        this.isDragging = false;
         
         document.getElementById('startBtn').style.display = 'none';
         document.getElementById('pauseBtn').style.display = 'block';
@@ -588,10 +656,11 @@ class Game {
         }
         
         const x = this.canvas.width / 2;
-        const y = this.nextFruitType.radius + 20;
+        const y = this.nextFruitType.radius + 30;
         
         this.currentFruit = new Fruit(this.nextFruitType, x, y, this);
         this.fruits.push(this.currentFruit);
+        this.state.canSpawn = true;
         
         this.generateNextFruit();
     }
@@ -602,24 +671,7 @@ class Game {
             fruit.update(this.state.activePowerUps);
         }
         
-        for (let i = 0; i < this.fruits.length; i++) {
-            for (let j = i + 1; j < this.fruits.length; j++) {
-                const fruit1 = this.fruits[i];
-                const fruit2 = this.fruits[j];
-                
-                if (fruit1.collidesWith(fruit2)) {
-                    if (fruit1.type.level === fruit2.type.level && 
-                        fruit1.type.level < FRUIT_TYPES.length - 1 &&
-                        fruit1.isDropped && fruit2.isDropped) {
-                        this.mergeFruits(fruit1, fruit2, i, j);
-                        i--;
-                        break;
-                    } else {
-                        fruit1.resolveCollision(fruit2);
-                    }
-                }
-            }
-        }
+        this.handleCollisions();
         
         for (let i = this.powerUps.length - 1; i >= 0; i--) {
             const powerUp = this.powerUps[i];
@@ -631,7 +683,7 @@ class Game {
             }
             
             for (const fruit of this.fruits) {
-                if (powerUp.checkCollision(fruit)) {
+                if (fruit.isDropped && powerUp.checkCollision(fruit)) {
                     this.collectPowerUp(powerUp);
                     this.powerUps.splice(i, 1);
                     break;
@@ -651,32 +703,69 @@ class Game {
         this.checkTopBoundary();
     }
 
-    mergeFruits(fruit1, fruit2, index1, index2) {
+    handleCollisions() {
+        let hasMerge = false;
+        
+        for (let i = 0; i < this.fruits.length; i++) {
+            for (let j = i + 1; j < this.fruits.length; j++) {
+                const fruit1 = this.fruits[i];
+                const fruit2 = this.fruits[j];
+                
+                if (!fruit1.collidesWith(fruit2)) continue;
+                
+                const canMerge = fruit1.type.level === fruit2.type.level &&
+                                fruit1.type.level < FRUIT_TYPES.length - 1 &&
+                                fruit1.isDropped && fruit2.isDropped;
+                
+                if (canMerge) {
+                    this.mergeFruits(fruit1, fruit2);
+                    hasMerge = true;
+                    i = -1;
+                    break;
+                } else {
+                    fruit1.resolveCollision(fruit2);
+                }
+            }
+        }
+    }
+
+    mergeFruits(fruit1, fruit2) {
         const newLevel = fruit1.type.level + 1;
         const newType = FRUIT_TYPES[newLevel];
         
         const newX = (fruit1.x + fruit2.x) / 2;
         const newY = (fruit1.y + fruit2.y) / 2;
         
-        if (index1 > index2) {
-            this.fruits.splice(index1, 1);
-            this.fruits.splice(index2, 1);
-        } else {
-            this.fruits.splice(index2, 1);
-            this.fruits.splice(index1, 1);
+        const index1 = this.fruits.indexOf(fruit1);
+        const index2 = this.fruits.indexOf(fruit2);
+        
+        if (index1 > -1 && index2 > -1) {
+            if (index1 > index2) {
+                this.fruits.splice(index1, 1);
+                this.fruits.splice(index2, 1);
+            } else {
+                this.fruits.splice(index2, 1);
+                this.fruits.splice(index1, 1);
+            }
         }
         
         const newFruit = new Fruit(newType, newX, newY, this);
         newFruit.isDropped = true;
-        newFruit.vx = (fruit1.vx + fruit2.vx) / 2;
-        newFruit.vy = (fruit1.vy + fruit2.vy) / 2;
+        
+        const avgVx = (fruit1.vx + fruit2.vx) / 2;
+        const avgVy = (fruit1.vy + fruit2.vy) / 2;
+        
+        newFruit.vx = avgVx * 0.5;
+        newFruit.vy = Math.min(avgVy, 2);
+        
         this.fruits.push(newFruit);
         
         if (fruit1 === this.currentFruit || fruit2 === this.currentFruit) {
-            this.currentFruit = newFruit;
+            this.currentFruit = null;
         }
         
         this.state.combo++;
+        
         const baseScore = newType.score * GAME_CONFIG.MERGE_SCORE_BASE;
         const comboMultiplier = GAME_CONFIG.COMBO_MULTIPLIER_BASE + 
                                  (this.state.combo - 1) * GAME_CONFIG.COMBO_MULTIPLIER_INCREMENT;
@@ -716,7 +805,11 @@ class Game {
     }
 
     usePowerUp(type) {
-        if (this.state.powerUps[type] <= 0 || this.state.activePowerUps[type]) return;
+        if (this.state.powerUps[type] <= 0) return;
+        
+        if (type === 'slowDown' || type === 'shield') {
+            if (this.state.activePowerUps[type]) return;
+        }
         
         this.state.powerUps[type]--;
         
@@ -801,7 +894,6 @@ class Game {
     checkTopBoundary() {
         if (!this.state.isPlaying || this.state.gameOver || this.state.isPaused) return;
         
-        const dangerY = 100;
         let touchingTop = false;
         
         for (const fruit of this.fruits) {
@@ -824,7 +916,7 @@ class Game {
     }
 
     clearFruitsAboveTop() {
-        const fruitsToRemove = this.fruits.filter(f => f.isDropped && f.y < 100);
+        const fruitsToRemove = this.fruits.filter(f => f.isDropped && f.y < 150);
         
         fruitsToRemove.forEach(fruit => {
             const index = this.fruits.indexOf(fruit);
@@ -855,7 +947,7 @@ class Game {
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        this.drawGrid();
+        this.drawDropArea();
         
         this.powerUps.forEach(powerUp => powerUp.draw(this.ctx));
         
@@ -863,13 +955,25 @@ class Game {
         
         this.scorePopups.forEach(popup => popup.draw(this.ctx));
         
-        if (this.currentFruit && this.isDragging) {
+        if (this.currentFruit && !this.currentFruit.isDropped && this.isDragging) {
             this.drawDragLine();
         }
     }
 
-    drawGrid() {
-        this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+    drawDropArea() {
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(0, 0, this.canvas.width, GAME_CONFIG.DROP_AREA_HEIGHT);
+        
+        this.ctx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, GAME_CONFIG.DROP_AREA_HEIGHT);
+        this.ctx.lineTo(this.canvas.width, GAME_CONFIG.DROP_AREA_HEIGHT);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        
+        this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
         this.ctx.lineWidth = 1;
         
         const gridSize = 50;
@@ -987,7 +1091,6 @@ class Game {
     }
 }
 
-// 页面加载完成后初始化游戏
 window.addEventListener('load', () => {
     new Game();
 });
