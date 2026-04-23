@@ -371,7 +371,13 @@ class Game {
         
         this.isDragging = false;
         this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.dragOffsetX = 0;
+        this.dragOffsetY = 0;
         this.fruitStartX = 0;
+        this.fruitStartY = 0;
+        this.fruitOriginalX = 0;
+        this.fruitOriginalY = 0;
         
         this.init();
     }
@@ -426,13 +432,13 @@ class Game {
         document.getElementById('clearItem').addEventListener('click', () => this.usePowerUp('clear'));
         
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-        this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         
         this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
         this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
         this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
     }
 
     getCanvasCoordinates(e) {
@@ -453,7 +459,9 @@ class Game {
         
         return {
             x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
+            y: (clientY - rect.top) * scaleY,
+            rawX: clientX - rect.left,
+            rawY: clientY - rect.top
         };
     }
 
@@ -464,9 +472,31 @@ class Game {
         
         const coords = this.getCanvasCoordinates(e);
         
-        this.isDragging = true;
-        this.dragStartX = coords.x;
-        this.fruitStartX = this.currentFruit.x;
+        const dx = coords.x - this.currentFruit.x;
+        const dy = coords.y - this.currentFruit.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        const clickThreshold = this.currentFruit.radius + 60;
+        
+        if (distance < clickThreshold) {
+            this.isDragging = true;
+            this.dragOffsetX = dx;
+            this.dragOffsetY = dy;
+            this.dragStartX = coords.x;
+            this.dragStartY = coords.y;
+            this.fruitOriginalX = this.currentFruit.x;
+            this.fruitOriginalY = this.currentFruit.y;
+        } else if (coords.y < GAME_CONFIG.DROP_AREA_HEIGHT + 100) {
+            this.isDragging = true;
+            this.dragOffsetX = 0;
+            this.dragOffsetY = 0;
+            this.dragStartX = coords.x;
+            this.dragStartY = coords.y;
+            this.fruitOriginalX = this.currentFruit.x;
+            this.fruitOriginalY = this.currentFruit.y;
+            
+            this.updateFruitPosition(coords);
+        }
     }
 
     handleMouseMove(e) {
@@ -475,13 +505,23 @@ class Game {
         e.preventDefault();
         const coords = this.getCanvasCoordinates(e);
         
-        const deltaX = coords.x - this.dragStartX;
-        let newX = this.fruitStartX + deltaX;
+        this.updateFruitPosition(coords);
+    }
+
+    updateFruitPosition(coords) {
+        if (!this.currentFruit) return;
+        
+        let targetX = coords.x - this.dragOffsetX;
+        let targetY = coords.y - this.dragOffsetY;
         
         const minX = this.currentFruit.radius;
         const maxX = this.canvas.width - this.currentFruit.radius;
         
-        this.currentFruit.x = Math.max(minX, Math.min(maxX, newX));
+        const minY = this.currentFruit.radius;
+        const maxY = GAME_CONFIG.DROP_AREA_HEIGHT + this.currentFruit.radius;
+        
+        this.currentFruit.x = Math.max(minX, Math.min(maxX, targetX));
+        this.currentFruit.y = Math.max(minY, Math.min(maxY, targetY));
     }
 
     handleMouseUp(e) {
