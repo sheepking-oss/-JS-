@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>合成大西瓜</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <!-- 游戏头部信息 -->
+        <div class="game-header">
+            <div class="score-panel">
+                <div class="score-item">
+                    <span class="label">得分</span>
+                    <span class="value" id="score">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">最高分</span>
+                    <span class="value" id="highScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">时间</span>
+                    <span class="value" id="time">60</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">生命值</span>
+                    <span class="value" id="lives">3</span>
+                </div>
+            </div>
+            <div class="combo-panel" id="comboPanel" style="display: none;">
+                <span class="combo-text">连击</span>
+                <span class="combo-count" id="comboCount">0</span>
+                <span class="combo-text">倍</span>
+            </div>
+        </div>
+
+        <!-- 游戏控制按钮 -->
+        <div class="control-panel">
+            <button class="control-btn" id="startBtn">开始游戏</button>
+            <button class="control-btn" id="pauseBtn" style="display: none;">暂停</button>
+            <button class="control-btn" id="themeBtn">切换主题</button>
+        </div>
+
+        <!-- 道具栏 -->
+        <div class="power-up-panel">
+            <div class="power-up-item" id="slowDownItem">
+                <div class="power-up-icon">🐌</div>
+                <span class="power-up-count">x0</span>
+            </div>
+            <div class="power-up-item" id="shieldItem">
+                <div class="power-up-icon">🛡️</div>
+                <span class="power-up-count">x0</span>
+            </div>
+            <div class="power-up-item" id="clearItem">
+                <div class="power-up-icon">🧹</div>
+                <span class="power-up-count">x0</span>
+            </div>
+        </div>
+
+        <!-- 游戏画布容器 -->
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="gameCanvas"></canvas>
+            <!-- 下一个水果预览 -->
+            <div class="next-fruit-preview">
+                <span class="preview-label">下一个:</span>
+                <div class="preview-fruit" id="nextFruitPreview"></div>
+            </div>
+        </div>
+
+        <!-- 游戏结束弹窗 -->
+        <div class="game-over-modal" id="gameOverModal" style="display: none;">
+            <div class="modal-content">
+                <h2 class="modal-title">游戏结束</h2>
+                <div class="modal-score">
+                    <span>本次得分:</span>
+                    <span id="finalScore">0</span>
+                </div>
+                <div class="modal-score">
+                    <span>最高分:</span>
+                    <span id="finalHighScore">0</span>
+                </div>
+                <button class="restart-btn" id="restartBtn">重新开始</button>
+            </div>
+        </div>
+
+        <!-- 游戏开始说明 -->
+        <div class="start-modal" id="startModal">
+            <div class="modal-content">
+                <h2 class="modal-title">合成大西瓜</h2>
+                <div class="instructions">
+                    <p>🎯 游戏规则：</p>
+                    <p>• 点击并拖动水果，释放后掉落</p>
+                    <p>• 相同等级的水果碰撞会合成升级</p>
+                    <p>• 合成越高级的水果得分越高</p>
+                    <p>• 连续合成可获得连击加分</p>
+                    <p>• 时间结束或生命值耗尽游戏结束</p>
+                    <p>• 道具说明：减速(🐌) 护盾(🛡️) 清屏(🧹)</p>
+                </div>
+                <button class="start-btn" id="modalStartBtn">开始游戏</button>
+            </div>
+        </div>
+
+        <!-- 护盾激活指示器 -->
+        <div class="shield-indicator" id="shieldIndicator" style="display: none;">
+            护盾激活中
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

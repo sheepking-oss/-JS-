@@ -1,0 +1,563 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
+
+body {
+    font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    touch-action: none;
+}
+
+/* 主题变量定义 */
+:root {
+    --bg-gradient-1: #ff9a9e;
+    --bg-gradient-2: #fecfef;
+    --bg-gradient-3: #fecfef;
+    --primary-color: #ff6b6b;
+    --secondary-color: #feca57;
+    --accent-color: #48dbfb;
+    --text-color: #333;
+    --text-light: #666;
+    --button-bg: #54a0ff;
+    --button-hover: #2e86de;
+    --border-radius: 12px;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --canvas-bg: #fff5f5;
+    --modal-bg: rgba(0, 0, 0, 0.7);
+}
+
+/* 深色主题 */
+.theme-dark {
+    --bg-gradient-1: #2c3e50;
+    --bg-gradient-2: #34495e;
+    --bg-gradient-3: #414a4c;
+    --primary-color: #e74c3c;
+    --secondary-color: #f39c12;
+    --accent-color: #3498db;
+    --text-color: #ecf0f1;
+    --text-light: #bdc3c7;
+    --button-bg: #2980b9;
+    --button-hover: #1a5276;
+    --border-radius: 12px;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    --canvas-bg: #34495e;
+    --modal-bg: rgba(0, 0, 0, 0.8);
+}
+
+/* 清新主题 */
+.theme-fresh {
+    --bg-gradient-1: #a8e6cf;
+    --bg-gradient-2: #dcedc1;
+    --bg-gradient-3: #ffd3b6;
+    --primary-color: #ff8b94;
+    --secondary-color: #ffaaa5;
+    --accent-color: #ffd93d;
+    --text-color: #333;
+    --text-light: #666;
+    --button-bg: #6bcfb5;
+    --button-hover: #4dae93;
+    --border-radius: 12px;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --canvas-bg: #f8fff9;
+    --modal-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* 海洋主题 */
+.theme-ocean {
+    --bg-gradient-1: #667eea;
+    --bg-gradient-2: #764ba2;
+    --bg-gradient-3: #f093fb;
+    --primary-color: #00d2ff;
+    --secondary-color: #3a7bd5;
+    --accent-color: #f5af19;
+    --text-color: #fff;
+    --text-light: #e0e0e0;
+    --button-bg: #00d2ff;
+    --button-hover: #0099cc;
+    --border-radius: 12px;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    --canvas-bg: #1a1a2e;
+    --modal-bg: rgba(0, 0, 0, 0.7);
+}
+
+/* 游戏容器 */
+.game-container {
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 50%, var(--bg-gradient-3) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 游戏头部 */
+.game-header {
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 10px;
+}
+
+.score-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--border-radius);
+    padding: 12px 15px;
+    box-shadow: var(--shadow);
+}
+
+.theme-dark .score-panel,
+.theme-ocean .score-panel {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.score-item .label {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 4px;
+}
+
+.score-item .value {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.combo-panel {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(45deg, #ff6b6b, #feca57);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 18px;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    animation: pulse 0.5s ease-in-out infinite alternate;
+    z-index: 100;
+}
+
+.combo-panel .combo-count {
+    font-size: 24px;
+    margin: 0 5px;
+}
+
+@keyframes pulse {
+    from {
+        transform: translateX(-50%) scale(1);
+    }
+    to {
+        transform: translateX(-50%) scale(1.05);
+    }
+}
+
+/* 控制面板 */
+.control-panel {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    width: 100%;
+    max-width: 500px;
+}
+
+.control-btn {
+    padding: 10px 20px;
+    background: var(--button-bg);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.control-btn:hover {
+    background: var(--button-hover);
+    transform: translateY(-2px);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+}
+
+/* 道具栏 */
+.power-up-panel {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 10px;
+    width: 100%;
+    max-width: 500px;
+}
+
+.power-up-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.theme-dark .power-up-item,
+.theme-ocean .power-up-item {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.power-up-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.power-up-item.active {
+    background: var(--accent-color);
+    transform: scale(1.1);
+}
+
+.power-up-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.power-up-count {
+    font-size: 12px;
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+/* 画布容器 */
+.canvas-container {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background: var(--canvas-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+#gameCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: var(--border-radius);
+}
+
+/* 下一个水果预览 */
+.next-fruit-preview {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.theme-dark .next-fruit-preview,
+.theme-ocean .next-fruit-preview {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.preview-label {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+}
+
+.preview-fruit {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+/* 模态框 */
+.modal-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-title {
+    font-size: 28px;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.modal-score {
+    font-size: 18px;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.modal-score span:last-child {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-left: 10px;
+}
+
+.instructions {
+    text-align: left;
+    margin-bottom: 20px;
+    color: var(--text-color);
+    line-height: 1.8;
+}
+
+.instructions p {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.restart-btn,
+.start-btn {
+    padding: 15px 40px;
+    background: linear-gradient(45deg, var(--button-bg), var(--accent-color));
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(84, 160, 255, 0.4);
+    margin-top: 20px;
+}
+
+.restart-btn:hover,
+.start-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(84, 160, 255, 0.6);
+}
+
+/* 护盾指示器 */
+.shield-indicator {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(52, 152, 219, 0.9);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 50;
+    animation: pulse 1s ease-in-out infinite alternate;
+}
+
+/* 合成动画效果 */
+.fruit-merge {
+    animation: mergeEffect 0.5s ease;
+}
+
+@keyframes mergeEffect {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* 得分弹出动画 */
+.score-popup {
+    position: absolute;
+    font-weight: bold;
+    font-size: 24px;
+    color: var(--primary-color);
+    pointer-events: none;
+    animation: scoreFloat 1s ease-out forwards;
+    z-index: 100;
+}
+
+@keyframes scoreFloat {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-50px) scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .game-container {
+        padding: 5px;
+    }
+
+    .score-panel {
+        padding: 8px 10px;
+    }
+
+    .score-item .label {
+        font-size: 10px;
+    }
+
+    .score-item .value {
+        font-size: 16px;
+    }
+
+    .control-btn {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+
+    .power-up-panel {
+        gap: 10px;
+    }
+
+    .power-up-item {
+        padding: 6px 8px;
+    }
+
+    .power-up-icon {
+        font-size: 20px;
+    }
+
+    .next-fruit-preview {
+        top: 5px;
+        right: 5px;
+        padding: 8px;
+    }
+
+    .preview-fruit {
+        width: 35px;
+        height: 35px;
+        font-size: 20px;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+
+    .modal-title {
+        font-size: 24px;
+    }
+
+    .instructions p {
+        font-size: 12px;
+    }
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+    .game-container {
+        flex-direction: row;
+        padding: 10px;
+    }
+
+    .game-header {
+        width: 150px;
+        margin-bottom: 0;
+        margin-right: 10px;
+    }
+
+    .score-panel {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .control-panel {
+        flex-direction: column;
+        width: 150px;
+        margin-bottom: 0;
+        margin-right: 10px;
+    }
+
+    .power-up-panel {
+        flex-direction: column;
+        width: 150px;
+        margin-bottom: 0;
+        margin-right: 10px;
+    }
+
+    .canvas-container {
+        flex: 1;
+        max-width: none;
+        max-height: 100%;
+    }
+
+    .next-fruit-preview {
+        top: 10px;
+        right: 10px;
+    }
+}
